@@ -1,0 +1,6 @@
+name=My Last Tape
+id=MyLastTape
+versionMin=42.20.0
+require=NewMusic
+description=Minimal cassette addon for Tali's New Music
+author=MyLastTape

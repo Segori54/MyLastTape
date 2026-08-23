@@ -1,0 +1,16 @@
+module MyLastTape
+{
+    imports
+    {
+        Base
+    }
+
+    item LastTape
+    {
+        ItemType = base:normal,
+        DisplayCategory = Entertainment,
+        Weight = 0.02,
+        DisplayName = My Last Tape,
+        CanSpawn = true,
+    }
+}
