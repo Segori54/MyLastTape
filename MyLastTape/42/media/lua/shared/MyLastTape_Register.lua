@@ -5,6 +5,13 @@ MyLastTapeAutoDJ = MyLastTapeAutoDJ or {}
 
 local MEDIA_FULL_TYPE = "MyLastTape.LastTape"
 local CASSETTE_CARRIER = "nm_carrier_cassette"
+local FALLBACK_TRACKS = {
+    {
+        sound = "NMZomboidTheme2",
+        label = "My Last Tape - Test Track",
+        trackNumber = 1
+    }
+}
 
 print("[MyLastTape] Registering cassette")
 
@@ -16,13 +23,7 @@ NMMediaContract.registerMediaTypeAlias(
 NMTrackCatalog.registerEntry(
     MEDIA_FULL_TYPE,
     CASSETTE_CARRIER,
-    {
-        {
-            sound = "NMZomboidTheme2",
-            label = "My Last Tape - Test Track",
-            trackNumber = 1
-        }
-    }
+    FALLBACK_TRACKS
 )
 
 print("[MyLastTape] Cassette registered successfully")
@@ -49,6 +50,33 @@ local function copyTrack(track)
     if track.duration ~= nil then copy.duration = track.duration end
 
     return copy
+end
+
+function MyLastTapeAutoDJ.clonePlaylist(tracks)
+    local out = {}
+    if type(tracks) ~= "table" then
+        return out
+    end
+    for i = 1, #tracks do
+        local track = copyTrack(tracks[i])
+        if track then
+            out[#out + 1] = track
+        end
+    end
+    return out
+end
+
+function MyLastTapeAutoDJ.getFallbackPlaylist()
+    return MyLastTapeAutoDJ.clonePlaylist(FALLBACK_TRACKS)
+end
+
+function MyLastTapeAutoDJ.registerPlaylist(tracks)
+    local playlist = MyLastTapeAutoDJ.clonePlaylist(tracks)
+    if #playlist < 1 then
+        return false, 0, playlist
+    end
+    NMTrackCatalog.registerEntry(MEDIA_FULL_TYPE, CASSETTE_CARRIER, playlist)
+    return true, #playlist, playlist
 end
 
 local function shuffle(tracks)
@@ -123,22 +151,23 @@ function MyLastTapeAutoDJ.rebuildPlaylist(player, reason)
     end
 
     if #playlist < 1 then
-        print("[MyLastTape] AutoDJ found no external cassette tracks; keeping fallback track")
-        print("[MyLastTape] Playlist size: 0")
-        return false, 0
+        playlist = MyLastTapeAutoDJ.getFallbackPlaylist()
+        print("[MyLastTape] AutoDJ found no external cassette tracks; using fallback track")
     end
 
-    shuffle(playlist)
+    if #playlist > 1 then
+        shuffle(playlist)
+    end
     for i = 1, #playlist do
         playlist[i].trackNumber = i
     end
 
     print("[MyLastTape] Playlist size: " .. tostring(#playlist))
-    NMTrackCatalog.registerEntry(MEDIA_FULL_TYPE, CASSETTE_CARRIER, playlist)
+    local registered, count, registeredPlaylist = MyLastTapeAutoDJ.registerPlaylist(playlist)
     print(string.format(
         "[MyLastTape] AutoDJ playlist registered (%d tracks, reason=%s)",
-        #playlist,
+        count,
         tostring(reason or "unknown")
     ))
-    return true, #playlist
+    return registered, count, registeredPlaylist
 end
