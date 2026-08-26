@@ -6,7 +6,7 @@ Minimal cassette addon for Tali's New Music on Project Zomboid Build 42.20.x.
 
 When `MyLastTape.LastTape` is inserted, My Last Tape scans the player's accessible source inventories, finds cassette items through `NMMediaContract.resolveMediaCarrier()`, resolves each cassette through `NMMusic.resolveTracks()`, copies valid tracks, deduplicates by sound, shuffles the independent list, and registers it as its own playlist. It does not use `NMTrackCatalog.entries` as the universal source and never modifies source catalogs.
 
-The playlist is rebuilt before insertion and before playing a cassette that was already inserted. It is not rebuilt every frame or at track changes; Tali's normal `next_track` and track-finished progression advance through the shuffled list.
+The playlist is rebuilt only for a My Last Tape insertion. It is not rebuilt every frame, at track changes, or when pressing Play; Tali's normal `next_track` and track-finished progression advance through the shuffled list.
 
 MVP-0.2 is intentionally single-player only. The AutoDJ rebuild is disabled for multiplayer because dynamic client-side catalog entries are not synchronized by this prototype.
 
@@ -38,3 +38,22 @@ MyLastTape/
 Enable Tali's New Music and My Last Tape in the Project Zomboid launcher before testing.
 
 For MVP-0.2, insert `My Last Tape` in a New Music-compatible player and start playback. The console should report the generated AutoDJ playlist and its track count.
+
+## MVP-0.3: Fancy UI cassette visuals
+
+`MyLastTape.LastTape` reuses the visual references from Tali's native
+`NewMusic.CassettePZOSTA` item:
+
+```text
+Icon = NM_Cassette_Zomboid
+WorldStaticModel = NewMusic.CassetteZomboid
+```
+
+These references let Tali's Fancy UI resolve the cassette texture and show
+the insertion animation without copying or modifying Tali assets.
+
+## MVP-0.3.1: Cassette playback lifecycle
+
+Insertion leaves the cassette stopped at track 1. Play uses the registered
+playlist without scanning or reshuffling; Stop preserves that playlist and the
+current `trackIndex` for the next Play.

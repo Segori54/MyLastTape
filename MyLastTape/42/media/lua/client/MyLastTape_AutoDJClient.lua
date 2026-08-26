@@ -7,12 +7,6 @@ local function isMyLastTapeInsert(args)
     return tostring(payload.mediaFullType or payload.mediaEjectFullType or "") == MEDIA_FULL_TYPE
 end
 
-local function isMyLastTapeLoadedInDevice(item)
-    local profile = NMDeviceProfiles and NMDeviceProfiles.getForItem and NMDeviceProfiles.getForItem(item) or nil
-    local state = profile and NMDeviceState and NMDeviceState.ensure and NMDeviceState.ensure(item, profile) or nil
-    return state and tostring(state.mediaFullType or "") == MEDIA_FULL_TYPE and state.isPlaying ~= true
-end
-
 local function isMultiplayerClient()
     return NMCore and NMCore.isMPClientRuntime and NMCore.isMPClientRuntime() == true
 end
@@ -25,15 +19,18 @@ elseif NMClientIntentDispatch and NMClientIntentDispatch._myLastTapeAutoDJWrappe
     NMClientIntentDispatch.performIntent = function(player, item, action, args)
         local name = tostring(action or "")
 
-        if MyLastTapeAutoDJ and MyLastTapeAutoDJ.rebuildPlaylist then
-            if name == "insert_media" and isMyLastTapeInsert(args) then
-                MyLastTapeAutoDJ.rebuildPlaylist(player, "insert_media")
-            elseif name == "play" and isMyLastTapeLoadedInDevice(item) then
-                MyLastTapeAutoDJ.rebuildPlaylist(player, "play")
-            end
+        if name ~= "insert_media" or not isMyLastTapeInsert(args) then
+            return originalPerformIntent(player, item, action, args)
         end
 
-        return originalPerformIntent(player, item, action, args)
+        if MyLastTapeAutoDJ and MyLastTapeAutoDJ.rebuildPlaylist then
+            -- Tali builds the insert payload from the catalog, so the new list
+            -- must exist before the native insert transition resets trackIndex.
+            MyLastTapeAutoDJ.rebuildPlaylist(player, "insert_media")
+        end
+
+        local inserted, insertReason = originalPerformIntent(player, item, action, args)
+        return inserted, insertReason
     end
 
     NMClientIntentDispatch._myLastTapeAutoDJWrapped = true
