@@ -41,7 +41,7 @@ For MVP-0.2, insert `My Last Tape` in a New Music-compatible player and start pl
 
 ## MVP-0.3: Fancy UI cassette visuals
 
-`MyLastTape.LastTape` now reuses the visual references from Tali's native
+`MyLastTape.LastTape` reuses the visual references from Tali's native
 `NewMusic.CassettePZOSTA` item:
 
 ```text
@@ -50,10 +50,7 @@ WorldStaticModel = NewMusic.CassetteZomboid
 ```
 
 These references let Tali's Fancy UI resolve the cassette texture and show
-the insertion animation without copying or modifying Tali assets. The AutoDJ
-registration and playback Lua remain unchanged. Test by opening a Fancy UI
-Walkman, inserting `My Last Tape`, and confirming the cassette visual,
-insertion animation, display name, and normal playback.
+the insertion animation without copying or modifying Tali assets.
 
 ## MVP-0.3.1: Cassette playback lifecycle
 
