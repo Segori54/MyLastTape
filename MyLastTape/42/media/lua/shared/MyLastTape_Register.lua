@@ -70,6 +70,23 @@ function MyLastTapeAutoDJ.getFallbackPlaylist()
     return MyLastTapeAutoDJ.clonePlaylist(FALLBACK_TRACKS)
 end
 
+function MyLastTapeAutoDJ.isFallbackPlaylist(tracks)
+    local playlist = MyLastTapeAutoDJ.clonePlaylist(tracks)
+    return #playlist == 1
+        and playlist[1].sound == FALLBACK_TRACKS[1].sound
+        and playlist[1].label == FALLBACK_TRACKS[1].label
+end
+
+function MyLastTapeAutoDJ.playlistFingerprint(tracks)
+    local playlist = MyLastTapeAutoDJ.clonePlaylist(tracks)
+    local sounds = {}
+    local limit = math.min(#playlist, 3)
+    for i = 1, limit do
+        sounds[#sounds + 1] = tostring(playlist[i].sound or "")
+    end
+    return tostring(#playlist) .. ":" .. table.concat(sounds, ",")
+end
+
 function MyLastTapeAutoDJ.registerPlaylist(tracks)
     local playlist = MyLastTapeAutoDJ.clonePlaylist(tracks)
     if #playlist < 1 then
@@ -95,6 +112,7 @@ function MyLastTapeAutoDJ.rebuildPlaylist(player, reason)
     local playlist = {}
     local seenSounds = {}
     local seenMediaTypes = {}
+    local usedFallback = false
 
     print("[MyLastTape] Scanning accessible media")
 
@@ -105,6 +123,8 @@ function MyLastTapeAutoDJ.rebuildPlaylist(player, reason)
 
     for i = 1, #inventories do
         local items = {}
+        local containerType = inventories[i] and inventories[i].getType and tostring(inventories[i]:getType() or "") or "unknown"
+        print("[MyLastTape] Source inventory " .. tostring(i) .. ": " .. containerType)
         if NMInventoryHelpers and NMInventoryHelpers.collectItemsRecursive then
             NMInventoryHelpers.collectItemsRecursive(inventories[i], items)
         end
@@ -152,6 +172,7 @@ function MyLastTapeAutoDJ.rebuildPlaylist(player, reason)
 
     if #playlist < 1 then
         playlist = MyLastTapeAutoDJ.getFallbackPlaylist()
+        usedFallback = true
         print("[MyLastTape] AutoDJ found no external cassette tracks; using fallback track")
     end
 
@@ -169,5 +190,5 @@ function MyLastTapeAutoDJ.rebuildPlaylist(player, reason)
         count,
         tostring(reason or "unknown")
     ))
-    return registered, count, registeredPlaylist
+    return registered, count, registeredPlaylist, not usedFallback
 end
