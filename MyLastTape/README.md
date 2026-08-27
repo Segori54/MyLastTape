@@ -70,6 +70,11 @@ The device stores the playlist only as a temporary bridge while the cassette is
 inserted. The fallback `NMZomboidTheme2` track remains temporary and is never
 recorded. Existing MVP-0.4 Phase 1 device playlists are ignored deliberately.
 
+New cassette playlists scan only the player's inventory and containers
+currently open in the loot UI. Nearby closed furniture, vehicles, world
+containers and corpses are not scanned. This keeps the source set aligned with
+what the player can actually access at insertion time.
+
 This phase is single-player/local only. It adds diagnostic lines for create,
 load-cassette and eject-save, including cassette/device IDs and a compact
 playlist fingerprint. Source inventory lines make it possible to reproduce

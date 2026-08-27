@@ -117,8 +117,8 @@ function MyLastTapeAutoDJ.rebuildPlaylist(player, reason)
     print("[MyLastTape] Scanning accessible media")
 
     local inventories = NMInventoryHelpers
-        and NMInventoryHelpers.collectAccessibleSourceInventories
-        and NMInventoryHelpers.collectAccessibleSourceInventories(player)
+        and NMInventoryHelpers.collectVisibleUiSourceInventories
+        and NMInventoryHelpers.collectVisibleUiSourceInventories(player)
         or {}
 
     for i = 1, #inventories do
