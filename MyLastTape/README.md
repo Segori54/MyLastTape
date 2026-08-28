@@ -32,6 +32,7 @@ MyLastTape/
             ├── client/
             │   ├── MyLastTape_AutoDJClient.lua
             │   ├── MyLastTape_ContextMenu.lua
+            │   ├── MyLastTape_PlaylistWindow.lua
             │   └── MyLastTape_RenameWindow.lua
             └── shared/
                 ├── MyLastTape_Metadata.lua
@@ -83,7 +84,7 @@ load-cassette and eject-save, including cassette/device IDs and a compact
 playlist fingerprint. Source inventory lines make it possible to reproduce
 whether a playlist came from a scan, a nested bag, open loot, or persistence.
 
-## MVP-0.5.1: Rename in Tali's Cassette menu (single-player)
+## MVP-0.5.2 / release 5.0.2: Cassette actions in Tali's menu (single-player)
 
 Right-click a `MyLastTape.LastTape` in the player's inventory, open Tali's
 existing `Cassette` submenu, then choose `Rename`. The action is added only to
@@ -97,4 +98,18 @@ MVP-0.4 bridge now transfers the cassette metadata together with its playlist.
 The integration wraps Tali's loose-media action builder without modifying Tali
 files. Rename is client-side single-player functionality; multiplayer authority
 and synchronization are not implemented yet. Record, erase and playlist-view
-actions remain planned for a later increment.
+actions are available from the same menu:
+
+- A virgin cassette offers `Rename` and `Record`.
+- A recorded cassette offers `Rename`, `View Playlist`, `Re-record` and
+  `Erase`.
+
+`Record` and `Re-record` scan only the player inventory and open loot sources,
+deduplicate and shuffle their tracks, then save the resulting playlist directly
+to the selected physical cassette. They never record the fallback OST track.
+`View Playlist` is read-only; `Erase` asks for confirmation and preserves a
+custom cassette name.
+
+Boomboxes may also use Tali's built-in `Shuffle` action with My Last Tape
+playlists. Walkman does not expose that control; use `Re-record` when a new
+random order is desired.

@@ -1,5 +1,7 @@
 require "MyLastTape_Metadata"
 require "MyLastTape_RenameWindow"
+require "MyLastTape_PlaylistWindow"
+require "ISUI/ISModalDialog"
 
 MyLastTapeContextMenu = MyLastTapeContextMenu or {}
 
@@ -22,9 +24,32 @@ local function isMyLastTape(item)
         and tostring(item:getFullType() or "") == MEDIA_FULL_TYPE
 end
 
-local function saveRename(player, id, rawName)
+local function getLiveTape(player, id)
     local item = findLivePlayerItem(player, id)
-    if not isMyLastTape(item) then
+    return isMyLastTape(item) and item or nil
+end
+
+local function showMessage(text)
+    local core = getCore and getCore() or nil
+    local screenWidth = core and core.getScreenWidth and core:getScreenWidth() or 800
+    local screenHeight = core and core.getScreenHeight and core:getScreenHeight() or 600
+    local dialog = ISModalDialog:new(
+        math.floor((screenWidth - 360) / 2),
+        math.floor((screenHeight - 140) / 2),
+        360,
+        140,
+        tostring(text or ""),
+        false,
+        nil,
+        nil
+    )
+    dialog:initialise()
+    dialog:addToUIManager()
+end
+
+local function saveRename(player, id, rawName)
+    local item = getLiveTape(player, id)
+    if not item then
         print("[MyLastTape] Rename failed: cassette is no longer in player inventory")
         return
     end
@@ -34,7 +59,79 @@ local function saveRename(player, id, rawName)
     print("[MyLastTape] Cassette renamed: id=" .. itemId(item))
 end
 
-local function addRenameAction(menu, player, mediaItem)
+local function recordPlaylist(player, id)
+    local item = getLiveTape(player, id)
+    if not item then
+        showMessage("This My Last Tape is no longer in your inventory.")
+        return
+    end
+    if not (MyLastTapeAutoDJ and MyLastTapeAutoDJ.buildPlaylist) then
+        showMessage("My Last Tape could not build a playlist.")
+        return
+    end
+
+    local built, count, playlist, recorded = MyLastTapeAutoDJ.buildPlaylist(player, "context_record", false)
+    if built ~= true or recorded ~= true or type(playlist) ~= "table" or #playlist < 1 then
+        showMessage("No cassette tracks are available. Keep source cassettes in your inventory or an open loot container.")
+        return
+    end
+
+    local state = MyLastTapeMetadata.readState(item)
+    state.playlist = MyLastTapeMetadata.clonePlaylist(playlist)
+    state.recorded = true
+    MyLastTapeMetadata.writeState(item, state)
+    print("[MyLastTape] Cassette recorded: id=" .. itemId(item) .. " tracks=" .. tostring(count))
+    showMessage("Recorded " .. tostring(count) .. " tracks on My Last Tape.")
+end
+
+local function viewPlaylist(player, id)
+    local item = getLiveTape(player, id)
+    if not item then
+        return
+    end
+    local state = MyLastTapeMetadata.readState(item)
+    if state.recorded ~= true or type(state.playlist) ~= "table" or #state.playlist < 1 then
+        showMessage("This cassette has no recorded playlist.")
+        return
+    end
+    MyLastTapePlaylistWindow.open(MyLastTapeMetadata.getDisplayName(item), state.playlist)
+end
+
+local function erasePlaylist(player, id)
+    local item = getLiveTape(player, id)
+    if not item then
+        return
+    end
+    local state = MyLastTapeMetadata.readState(item)
+    state.playlist = nil
+    state.recorded = false
+    MyLastTapeMetadata.writeState(item, state)
+    print("[MyLastTape] Cassette erased: id=" .. itemId(item))
+end
+
+local function confirmErase(player, id)
+    local core = getCore and getCore() or nil
+    local screenWidth = core and core.getScreenWidth and core:getScreenWidth() or 800
+    local screenHeight = core and core.getScreenHeight and core:getScreenHeight() or 600
+    local dialog = ISModalDialog:new(
+        math.floor((screenWidth - 400) / 2),
+        math.floor((screenHeight - 150) / 2),
+        400,
+        150,
+        "Erase this cassette's recorded playlist? This cannot be undone.",
+        true,
+        nil,
+        function(_, button)
+            if button and button.internal == "YES" then
+                erasePlaylist(player, id)
+            end
+        end
+    )
+    dialog:initialise()
+    dialog:addToUIManager()
+end
+
+local function addTapeActions(menu, player, mediaItem)
     if not (menu and player and isMyLastTape(mediaItem)) then
         return
     end
@@ -45,6 +142,14 @@ local function addRenameAction(menu, player, mediaItem)
     menu:addOption("Rename", player, function(p, id, initialName)
         MyLastTapeRenameWindow.open(p, id, initialName, saveRename)
     end, itemId(mediaItem), state.name or "")
+
+    if state.recorded == true then
+        menu:addOption("View Playlist", player, viewPlaylist, itemId(mediaItem))
+        menu:addOption("Re-record", player, recordPlaylist, itemId(mediaItem))
+        menu:addOption("Erase", player, confirmErase, itemId(mediaItem))
+    else
+        menu:addOption("Record", player, recordPlaylist, itemId(mediaItem))
+    end
 end
 
 function MyLastTapeContextMenu.installTaliLooseMediaHook()
@@ -60,10 +165,10 @@ function MyLastTapeContextMenu.installTaliLooseMediaHook()
 
     env.addLooseMediaActions = function(subMenu, player, mediaItem)
         originalAddLooseMediaActions(subMenu, player, mediaItem)
-        addRenameAction(subMenu, player, mediaItem)
+        addTapeActions(subMenu, player, mediaItem)
     end
     env._myLastTapeRenameWrapped = true
-    print("[MyLastTape] Rename action added to Tali cassette menu")
+    print("[MyLastTape] Cassette actions added to Tali cassette menu")
     return true
 end
 

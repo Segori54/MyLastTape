@@ -108,7 +108,7 @@ local function shuffle(tracks)
     end
 end
 
-function MyLastTapeAutoDJ.rebuildPlaylist(player, reason)
+function MyLastTapeAutoDJ.buildPlaylist(player, reason, allowFallback)
     local playlist = {}
     local seenSounds = {}
     local seenMediaTypes = {}
@@ -170,10 +170,15 @@ function MyLastTapeAutoDJ.rebuildPlaylist(player, reason)
         end
     end
 
-    if #playlist < 1 then
+    if #playlist < 1 and allowFallback == true then
         playlist = MyLastTapeAutoDJ.getFallbackPlaylist()
         usedFallback = true
         print("[MyLastTape] AutoDJ found no external cassette tracks; using fallback track")
+    end
+
+    if #playlist < 1 then
+        print("[MyLastTape] AutoDJ found no external cassette tracks")
+        return false, 0, playlist, false
     end
 
     if #playlist > 1 then
@@ -184,11 +189,19 @@ function MyLastTapeAutoDJ.rebuildPlaylist(player, reason)
     end
 
     print("[MyLastTape] Playlist size: " .. tostring(#playlist))
+    return true, #playlist, playlist, not usedFallback
+end
+
+function MyLastTapeAutoDJ.rebuildPlaylist(player, reason)
+    local built, count, playlist, recorded = MyLastTapeAutoDJ.buildPlaylist(player, reason, true)
+    if not built then
+        return false, count, playlist, recorded
+    end
     local registered, count, registeredPlaylist = MyLastTapeAutoDJ.registerPlaylist(playlist)
     print(string.format(
         "[MyLastTape] AutoDJ playlist registered (%d tracks, reason=%s)",
-        count,
+        count or 0,
         tostring(reason or "unknown")
     ))
-    return registered, count, registeredPlaylist, not usedFallback
+    return registered, count, registeredPlaylist, recorded
 end
