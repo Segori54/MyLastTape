@@ -30,8 +30,11 @@ MyLastTape/
         │   └── MyLastTape_Items.txt
         └── lua/
             ├── client/
-            │   └── MyLastTape_AutoDJClient.lua
+            │   ├── MyLastTape_AutoDJClient.lua
+            │   ├── MyLastTape_ContextMenu.lua
+            │   └── MyLastTape_RenameWindow.lua
             └── shared/
+                ├── MyLastTape_Metadata.lua
                 └── MyLastTape_Register.lua
 ```
 
@@ -79,3 +82,19 @@ This phase is single-player/local only. It adds diagnostic lines for create,
 load-cassette and eject-save, including cassette/device IDs and a compact
 playlist fingerprint. Source inventory lines make it possible to reproduce
 whether a playlist came from a scan, a nested bag, open loot, or persistence.
+
+## MVP-0.5.1: Rename in Tali's Cassette menu (single-player)
+
+Right-click a `MyLastTape.LastTape` in the player's inventory, open Tali's
+existing `Cassette` submenu, then choose `Rename`. The action is added only to
+My Last Tape; it does not appear on other cassettes. The name is stored per
+physical cassette under
+`item:getModData().MyLastTape.name` and is also applied to the item's visible
+inventory name. Empty input clears the custom name and restores `My Last Tape`.
+
+Names survive insertion, ejection, device changes and save/load because the
+MVP-0.4 bridge now transfers the cassette metadata together with its playlist.
+The integration wraps Tali's loose-media action builder without modifying Tali
+files. Rename is client-side single-player functionality; multiplayer authority
+and synchronization are not implemented yet. Record, erase and playlist-view
+actions remain planned for a later increment.

@@ -1,10 +1,10 @@
 require "intents/NMClientIntentDispatch"
+require "MyLastTape_Metadata"
 
 local MEDIA_FULL_TYPE = "MyLastTape.LastTape"
 local MODDATA_KEY = "MyLastTape"
 local PLAYLIST_KEY = "playlist"
-local BRIDGE_KEY = "insertedPlaylist"
-local SCHEMA_VERSION = 1
+local BRIDGE_KEY = "insertedCassette"
 
 local function isMultiplayerClient()
     return NMCore and NMCore.isMPClientRuntime and NMCore.isMPClientRuntime() == true
@@ -40,47 +40,17 @@ local function findItemById(player, id)
     return NMInventoryHelpers.findItemById(inventory, id)
 end
 
-local function readCassettePlaylist(cassette)
-    if not (cassette and cassette.getModData and MyLastTapeAutoDJ and MyLastTapeAutoDJ.clonePlaylist) then
-        return nil
-    end
-    local state = cassette:getModData()[MODDATA_KEY]
-    local playlist = type(state) == "table" and MyLastTapeAutoDJ.clonePlaylist(state[PLAYLIST_KEY]) or nil
-    if type(playlist) == "table" and #playlist > 0 then
-        return playlist
-    end
-    return nil
-end
-
-local function writeCassettePlaylist(cassette, playlist)
-    if not (cassette and cassette.getModData and MyLastTapeAutoDJ and MyLastTapeAutoDJ.clonePlaylist) then
+local function saveDeviceBridge(device, cassetteState)
+    if not (device and device.getModData and MyLastTapeMetadata) then
         return false
     end
-    local copy = MyLastTapeAutoDJ.clonePlaylist(playlist)
-    if #copy < 1 or (MyLastTapeAutoDJ.isFallbackPlaylist and MyLastTapeAutoDJ.isFallbackPlaylist(copy)) then
-        return false
-    end
-    cassette:getModData()[MODDATA_KEY] = {
-        version = SCHEMA_VERSION,
-        [PLAYLIST_KEY] = copy
-    }
-    return true
-end
-
-local function saveDeviceBridge(device, playlist)
-    if not (device and device.getModData and MyLastTapeAutoDJ and MyLastTapeAutoDJ.clonePlaylist) then
-        return false
-    end
-    local copy = MyLastTapeAutoDJ.clonePlaylist(playlist)
-    if #copy < 1 or (MyLastTapeAutoDJ.isFallbackPlaylist and MyLastTapeAutoDJ.isFallbackPlaylist(copy)) then
+    local copy = MyLastTapeMetadata.cloneState(cassetteState)
+    if not MyLastTapeMetadata.hasPersistentData(copy) then
         return false
     end
     local md = device:getModData()
     md[MODDATA_KEY] = md[MODDATA_KEY] or {}
-    md[MODDATA_KEY][BRIDGE_KEY] = {
-        version = SCHEMA_VERSION,
-        [PLAYLIST_KEY] = copy
-    }
+    md[MODDATA_KEY][BRIDGE_KEY] = copy
     -- Phase 1 used this as persistent device state. A device must never be
     -- the source of a cassette playlist, so remove that legacy data.
     md[MODDATA_KEY][PLAYLIST_KEY] = nil
@@ -89,14 +59,14 @@ local function saveDeviceBridge(device, playlist)
 end
 
 local function readDeviceBridge(device)
-    if not (device and device.getModData and MyLastTapeAutoDJ and MyLastTapeAutoDJ.clonePlaylist) then
+    if not (device and device.getModData and MyLastTapeMetadata) then
         return nil
     end
     local state = device:getModData()[MODDATA_KEY]
     local bridge = type(state) == "table" and state[BRIDGE_KEY] or nil
-    local playlist = type(bridge) == "table" and MyLastTapeAutoDJ.clonePlaylist(bridge[PLAYLIST_KEY]) or nil
-    if type(playlist) == "table" and #playlist > 0 then
-        return playlist
+    local copy = MyLastTapeMetadata.cloneState(bridge)
+    if MyLastTapeMetadata.hasPersistentData(copy) then
+        return copy
     end
     return nil
 end
@@ -151,7 +121,7 @@ local function isMyLastTapeInsert(args)
 end
 
 if isMultiplayerClient() then
-    print("[MyLastTape] AutoDJ disabled in multiplayer for MVP-0.4 Phase 2")
+    print("[MyLastTape] AutoDJ disabled in multiplayer for MVP-0.5")
 elseif NMClientIntentDispatch and NMClientIntentDispatch._myLastTapeAutoDJWrapped ~= true then
     local originalPerformIntent = NMClientIntentDispatch.performIntent
 
@@ -160,8 +130,9 @@ elseif NMClientIntentDispatch and NMClientIntentDispatch._myLastTapeAutoDJWrappe
 
         if name == "insert_media" and isMyLastTapeInsert(args) then
             local sourceCassette = findItemById(player, args and args.mediaItemId)
-            local playlist = readCassettePlaylist(sourceCassette)
-            local shouldBridge = playlist ~= nil
+            local cassetteState = MyLastTapeMetadata.readState(sourceCassette)
+            local playlist = cassetteState.playlist
+            local shouldBridge = MyLastTapeMetadata.hasPersistentData(cassetteState)
 
             if playlist then
                 print("[MyLastTape] mode=load-cassette cassetteId=" .. itemId(sourceCassette)
@@ -172,13 +143,19 @@ elseif NMClientIntentDispatch and NMClientIntentDispatch._myLastTapeAutoDJWrappe
             elseif MyLastTapeAutoDJ and MyLastTapeAutoDJ.rebuildPlaylist then
                 print("[MyLastTape] mode=create cassetteId=" .. itemId(sourceCassette)
                     .. " " .. deviceIdentity(item))
-                _, _, playlist, shouldBridge = MyLastTapeAutoDJ.rebuildPlaylist(player, "insert_media")
+                local _, _, rebuiltPlaylist, recorded = MyLastTapeAutoDJ.rebuildPlaylist(player, "insert_media")
+                playlist = rebuiltPlaylist
+                if recorded == true then
+                    cassetteState.playlist = MyLastTapeMetadata.clonePlaylist(playlist)
+                    cassetteState.recorded = true
+                end
+                shouldBridge = MyLastTapeMetadata.hasPersistentData(cassetteState)
             end
 
             print("[MyLastTape] Playlist tracks: " .. tostring(playlist and #playlist or 0))
             local inserted, insertReason = originalPerformIntent(player, item, action, args)
             if inserted == true and shouldBridge == true then
-                saveDeviceBridge(item, playlist)
+                saveDeviceBridge(item, cassetteState)
             elseif inserted == true then
                 clearDeviceBridge(item)
             end
@@ -186,8 +163,8 @@ elseif NMClientIntentDispatch and NMClientIntentDispatch._myLastTapeAutoDJWrappe
         end
 
         if name == "eject_media" then
-            local playlist = readDeviceBridge(item)
-            if not playlist then
+            local cassetteState = readDeviceBridge(item)
+            if not cassetteState then
                 return originalPerformIntent(player, item, action, args)
             end
 
@@ -198,12 +175,12 @@ elseif NMClientIntentDispatch and NMClientIntentDispatch._myLastTapeAutoDJWrappe
             end
 
             local producedCassette = findProducedCassette(player, beforeIds)
-            if producedCassette and writeCassettePlaylist(producedCassette, playlist) then
+            if producedCassette and MyLastTapeMetadata.writeState(producedCassette, cassetteState) then
                 clearDeviceBridge(item)
                 print("[MyLastTape] mode=eject-save cassetteId=" .. itemId(producedCassette)
                     .. " " .. deviceIdentity(item)
-                    .. " tracks=" .. tostring(#playlist)
-                    .. " fingerprint=" .. playlistFingerprint(playlist))
+                    .. " tracks=" .. tostring(cassetteState.playlist and #cassetteState.playlist or 0)
+                    .. " fingerprint=" .. playlistFingerprint(cassetteState.playlist))
             else
                 print("[MyLastTape] eject-save failed: produced cassette not found; bridge retained")
             end
