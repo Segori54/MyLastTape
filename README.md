@@ -84,7 +84,7 @@ load-cassette and eject-save, including cassette/device IDs and a compact
 playlist fingerprint. Source inventory lines make it possible to reproduce
 whether a playlist came from a scan, a nested bag, open loot, or persistence.
 
-## MVP-0.5.2 / release 5.0.2: Cassette actions in Tali's menu (single-player)
+## MVP-0.5.2 /: Cassette actions in Tali's menu (single-player)
 
 Right-click a `MyLastTape.LastTape` in the player's inventory, open Tali's
 existing `Cassette` submenu, then choose `Rename`. The action is added only to
