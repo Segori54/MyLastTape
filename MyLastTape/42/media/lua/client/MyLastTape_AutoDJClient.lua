@@ -45,9 +45,6 @@ local function saveDeviceBridge(device, cassetteState)
         return false
     end
     local copy = MyLastTapeMetadata.cloneState(cassetteState)
-    if not MyLastTapeMetadata.hasPersistentData(copy) then
-        return false
-    end
     local md = device:getModData()
     md[MODDATA_KEY] = md[MODDATA_KEY] or {}
     md[MODDATA_KEY][BRIDGE_KEY] = copy
@@ -64,11 +61,11 @@ local function readDeviceBridge(device)
     end
     local state = device:getModData()[MODDATA_KEY]
     local bridge = type(state) == "table" and state[BRIDGE_KEY] or nil
-    local copy = MyLastTapeMetadata.cloneState(bridge)
-    if MyLastTapeMetadata.hasPersistentData(copy) then
-        return copy
+    if type(bridge) ~= "table" then
+        return nil
     end
-    return nil
+    local copy = MyLastTapeMetadata.cloneState(bridge)
+    return copy
 end
 
 local function clearDeviceBridge(device)
@@ -121,7 +118,7 @@ local function isMyLastTapeInsert(args)
 end
 
 if isMultiplayerClient() then
-    print("[MyLastTape] AutoDJ disabled in multiplayer for MVP-0.5")
+    print("[MyLastTape] AutoDJ disabled in multiplayer for MVP-0.6")
 elseif NMClientIntentDispatch and NMClientIntentDispatch._myLastTapeAutoDJWrapped ~= true then
     local originalPerformIntent = NMClientIntentDispatch.performIntent
 
@@ -132,34 +129,38 @@ elseif NMClientIntentDispatch and NMClientIntentDispatch._myLastTapeAutoDJWrappe
             local sourceCassette = findItemById(player, args and args.mediaItemId)
             local cassetteState = MyLastTapeMetadata.readState(sourceCassette)
             local playlist = cassetteState.playlist
-            local shouldBridge = MyLastTapeMetadata.hasPersistentData(cassetteState)
 
-            if playlist then
+            if cassetteState.recorded == true and type(playlist) == "table" and #playlist > 0 then
                 print("[MyLastTape] mode=load-cassette cassetteId=" .. itemId(sourceCassette)
                     .. " " .. deviceIdentity(item)
                     .. " tracks=" .. tostring(#playlist)
                     .. " fingerprint=" .. playlistFingerprint(playlist))
                 MyLastTapeAutoDJ.registerPlaylist(playlist)
-            elseif MyLastTapeAutoDJ and MyLastTapeAutoDJ.rebuildPlaylist then
-                print("[MyLastTape] mode=create cassetteId=" .. itemId(sourceCassette)
-                    .. " " .. deviceIdentity(item))
-                local _, _, rebuiltPlaylist, recorded = MyLastTapeAutoDJ.rebuildPlaylist(player, "insert_media")
-                playlist = rebuiltPlaylist
-                if recorded == true then
-                    cassetteState.playlist = MyLastTapeMetadata.clonePlaylist(playlist)
-                    cassetteState.recorded = true
+            else
+                playlist = nil
+                cassetteState.playlist = nil
+                cassetteState.recorded = false
+                if MyLastTapeAutoDJ and MyLastTapeAutoDJ.clearRegisteredPlaylist then
+                    MyLastTapeAutoDJ.clearRegisteredPlaylist()
                 end
-                shouldBridge = MyLastTapeMetadata.hasPersistentData(cassetteState)
+                print("[MyLastTape] mode=insert-blank cassetteId=" .. itemId(sourceCassette)
+                    .. " " .. deviceIdentity(item))
             end
 
             print("[MyLastTape] Playlist tracks: " .. tostring(playlist and #playlist or 0))
             local inserted, insertReason = originalPerformIntent(player, item, action, args)
-            if inserted == true and shouldBridge == true then
+            if inserted == true then
                 saveDeviceBridge(item, cassetteState)
-            elseif inserted == true then
-                clearDeviceBridge(item)
             end
             return inserted, insertReason
+        end
+
+        if name == "play" then
+            local cassetteState = readDeviceBridge(item)
+            if cassetteState and cassetteState.recorded ~= true then
+                print("[MyLastTape] Blank cassette: playback blocked")
+                return false, "blank_cassette"
+            end
         end
 
         if name == "eject_media" then

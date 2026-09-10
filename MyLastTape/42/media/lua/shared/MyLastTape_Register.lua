@@ -5,25 +5,12 @@ MyLastTapeAutoDJ = MyLastTapeAutoDJ or {}
 
 local MEDIA_FULL_TYPE = "MyLastTape.LastTape"
 local CASSETTE_CARRIER = "nm_carrier_cassette"
-local FALLBACK_TRACKS = {
-    {
-        sound = "NMZomboidTheme2",
-        label = "My Last Tape - Test Track",
-        trackNumber = 1
-    }
-}
 
 print("[MyLastTape] Registering cassette")
 
 NMMediaContract.registerMediaTypeAlias(
     "LastTape",
     CASSETTE_CARRIER
-)
-
-NMTrackCatalog.registerEntry(
-    MEDIA_FULL_TYPE,
-    CASSETTE_CARRIER,
-    FALLBACK_TRACKS
 )
 
 print("[MyLastTape] Cassette registered successfully")
@@ -66,17 +53,6 @@ function MyLastTapeAutoDJ.clonePlaylist(tracks)
     return out
 end
 
-function MyLastTapeAutoDJ.getFallbackPlaylist()
-    return MyLastTapeAutoDJ.clonePlaylist(FALLBACK_TRACKS)
-end
-
-function MyLastTapeAutoDJ.isFallbackPlaylist(tracks)
-    local playlist = MyLastTapeAutoDJ.clonePlaylist(tracks)
-    return #playlist == 1
-        and playlist[1].sound == FALLBACK_TRACKS[1].sound
-        and playlist[1].label == FALLBACK_TRACKS[1].label
-end
-
 function MyLastTapeAutoDJ.playlistFingerprint(tracks)
     local playlist = MyLastTapeAutoDJ.clonePlaylist(tracks)
     local sounds = {}
@@ -96,6 +72,12 @@ function MyLastTapeAutoDJ.registerPlaylist(tracks)
     return true, #playlist, playlist
 end
 
+function MyLastTapeAutoDJ.clearRegisteredPlaylist()
+    if NMTrackCatalog and type(NMTrackCatalog.entries) == "table" then
+        NMTrackCatalog.entries[MEDIA_FULL_TYPE] = nil
+    end
+end
+
 local function shuffle(tracks)
     for i = #tracks, 2, -1 do
         local j
@@ -108,11 +90,10 @@ local function shuffle(tracks)
     end
 end
 
-function MyLastTapeAutoDJ.buildPlaylist(player, reason, allowFallback)
+function MyLastTapeAutoDJ.buildPlaylist(player, reason)
     local playlist = {}
     local seenSounds = {}
     local seenMediaTypes = {}
-    local usedFallback = false
 
     print("[MyLastTape] Scanning accessible media")
 
@@ -170,12 +151,6 @@ function MyLastTapeAutoDJ.buildPlaylist(player, reason, allowFallback)
         end
     end
 
-    if #playlist < 1 and allowFallback == true then
-        playlist = MyLastTapeAutoDJ.getFallbackPlaylist()
-        usedFallback = true
-        print("[MyLastTape] AutoDJ found no external cassette tracks; using fallback track")
-    end
-
     if #playlist < 1 then
         print("[MyLastTape] AutoDJ found no external cassette tracks")
         return false, 0, playlist, false
@@ -189,11 +164,11 @@ function MyLastTapeAutoDJ.buildPlaylist(player, reason, allowFallback)
     end
 
     print("[MyLastTape] Playlist size: " .. tostring(#playlist))
-    return true, #playlist, playlist, not usedFallback
+    return true, #playlist, playlist, true
 end
 
 function MyLastTapeAutoDJ.rebuildPlaylist(player, reason)
-    local built, count, playlist, recorded = MyLastTapeAutoDJ.buildPlaylist(player, reason, true)
+    local built, count, playlist, recorded = MyLastTapeAutoDJ.buildPlaylist(player, reason)
     if not built then
         return false, count, playlist, recorded
     end
@@ -204,4 +179,22 @@ function MyLastTapeAutoDJ.rebuildPlaylist(player, reason)
         tostring(reason or "unknown")
     ))
     return registered, count, registeredPlaylist, recorded
+end
+
+-- New Music normally falls back to the suffix of any unregistered FullType.
+-- A blank My Last Tape must instead resolve to no tracks. The wrapper is
+-- restricted to this addon's own FullType and leaves every other resolver path
+-- untouched.
+if NMMusic and type(NMMusic.resolveTracks) == "function" and NMMusic._myLastTapeBlankResolverWrapped ~= true then
+    local originalResolveTracks = NMMusic.resolveTracks
+    NMMusic.resolveTracks = function(mediaFullType)
+        if tostring(mediaFullType or "") == MEDIA_FULL_TYPE then
+            local entry = NMTrackCatalog and NMTrackCatalog.resolveTracks and NMTrackCatalog.resolveTracks(MEDIA_FULL_TYPE) or nil
+            if type(entry) ~= "table" or type(entry.tracks) ~= "table" or #entry.tracks < 1 then
+                return nil
+            end
+        end
+        return originalResolveTracks(mediaFullType)
+    end
+    NMMusic._myLastTapeBlankResolverWrapped = true
 end
