@@ -1,5 +1,4 @@
 require "Items/ProceduralDistributions"
-require "MyLastTape_Metadata"
 
 local MEDIA_FULL_TYPE = "MyLastTape.LastTape"
 local TARGETS = {
@@ -36,21 +35,3 @@ for distributionName, weight in pairs(TARGETS) do
 end
 
 print("[MyLastTape] Loot distribution injected into " .. tostring(injected) .. " procedural lists")
-
-local function initializeSpawnedCassettes(_, _, container)
-    local items = container and container.getItems and container:getItems() or nil
-    if not (items and items.size and items.get) then
-        return
-    end
-    for i = 0, items:size() - 1 do
-        local item = items:get(i)
-        if item and item.getFullType and tostring(item:getFullType() or "") == MEDIA_FULL_TYPE then
-            MyLastTapeMetadata.ensureVisual(item)
-        end
-    end
-end
-
-if Events and Events.OnFillContainer and MyLastTapeLootVisualHookRegistered ~= true then
-    Events.OnFillContainer.Add(initializeSpawnedCassettes)
-    MyLastTapeLootVisualHookRegistered = true
-end

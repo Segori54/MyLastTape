@@ -3,5 +3,5 @@ id=MyLastTape
 versionMin=42.20.0
 require=NewMusic
 poster=poster.png
-description=Create persistent custom cassette playlists from the tapes you find. Record, rename, reorder and shuffle each cassette, then play it in portable devices, placed stereos and vehicle radios.
+description=MLT 0.7.1: Create persistent custom cassette playlists from the tapes you find. Record, rename, reorder and shuffle each tape, then play it in portable devices, placed stereos and vehicle radios. Single-player only.
 author=MyLastTape

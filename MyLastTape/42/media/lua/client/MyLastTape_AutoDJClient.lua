@@ -215,7 +215,7 @@ elseif NMClientIntentDispatch and NMClientIntentDispatch._myLastTapeAutoDJWrappe
 
     -- Vehicle radios use a separate dispatch entry point in New Music. Keep
     -- the same cassette bridge on the radio part so ejecting recreates the
-    -- physical tape with its playlist, name and visual variant intact.
+    -- physical tape with its playlist and name intact.
     if type(NMClientIntentDispatch.performVehicleIntent) == "function"
         and NMClientIntentDispatch._myLastTapeVehicleAutoDJWrapped ~= true
     then

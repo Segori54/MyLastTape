@@ -3,17 +3,17 @@
 Single-player cassette recording and AutoDJ addon for Tali's New Music on
 Project Zomboid Build 42.20.x.
 
-## Current playtest update
+## MLT 0.7.1
 
-- New items are named `Blank Cassette` and receive one of Tali's 19 cassette
-  visuals, stored independently on each physical instance.
-- `Record` and `Re-record` select a different visual while preserving custom
-  names; erasing returns the tape to its blank state.
+- New items are named `Blank Cassette`; recording them changes the default
+  display name to `My Last Tape` while preserving custom names.
 - Portable players, placed devices and vehicle radios preserve the cassette's
-  playlist, name and visual through insertion and ejection.
+  playlist and name through insertion and ejection.
 - The playlist editor's final action is now the smaller `Save` button.
 - Cassette state is resolved from the player inventory and accessible open loot
   sources before insertion.
+- Random per-instance icons remain deferred: the runtime texture attempt did
+  not produce a visible icon change during the 0.7.1 playtest.
 
 ## MyLastTape 0.7: Playlist Editor (single-player)
 
@@ -34,12 +34,8 @@ cassette until `Save` is pressed.
 The editor remains single-player only. It adds no search, filters, media
 metadata, boombox changes, crafting changes or multiplayer synchronization.
 
-Every new `Blank Cassette` receives one of Tali's 19 cassette visuals at
-random. Recording and re-recording changes it to a different random visual.
-The selected visual is stored with the physical cassette and survives
-save/load, insertion and ejection. Vehicle radios use the same metadata bridge
-as portable players, so a cassette keeps its playlist, name and visual when it
-is ejected from any supported player.
+Vehicle radios use the same metadata bridge as portable players, so a cassette
+keeps its playlist and name when it is ejected from any supported player.
 
 ## MVP-0.2: AutoDJ
 
@@ -165,12 +161,11 @@ random order is desired.
 
 ## MVP-0.6: Blank cassettes and acquisition (single-player)
 
-New `MyLastTape.LastTape` instances are named `Blank Cassette` and receive a
-random per-instance cassette visual. They contain no playlist, do not scan
-sources on insertion and cannot start playback. `Record` is the only action
-that creates a persistent playlist; `Re-record` replaces one that is already
-present. Both actions select a different random visual. The old
-`NMZomboidTheme2` fallback is no longer registered or used by blank cassettes.
+New `MyLastTape.LastTape` instances are named `Blank Cassette`. They contain no
+playlist, do not scan sources on insertion and cannot start playback. `Record`
+is the only action that creates a persistent playlist; `Re-record` replaces one
+that is already present. The old `NMZomboidTheme2` fallback is no longer
+registered or used by blank cassettes.
 
 The mod adds My Last Tape to a small set of vanilla B42 procedural loot lists:
 bedroom dressers and side tables, living-room shelves and side tables, generic
@@ -187,7 +182,7 @@ server-authoritative starter delivery remains future work.
 ### MVP-0.6 test checklist
 
 1. Start a new game and inspect plausible residential containers for a `Blank
-   Cassette`; separate instances should use independently selected visuals.
+   Cassette`.
 2. Insert a blank cassette: it should insert normally, remain stopped and play
    no audio.
 3. Keep compatible source cassettes in inventory or an open loot container,

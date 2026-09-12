@@ -29,38 +29,6 @@ local function getLiveTape(player, id)
     return isMyLastTape(item) and item or nil
 end
 
-local function refreshTapeVisuals()
-    local player = getPlayer and getPlayer() or nil
-    local inventories = {}
-    local seenInventories = {}
-    local mainInventory = player and player.getInventory and player:getInventory() or nil
-    if mainInventory then
-        inventories[#inventories + 1] = mainInventory
-        seenInventories[mainInventory] = true
-    end
-    local visible = NMInventoryHelpers
-        and NMInventoryHelpers.collectVisibleUiSourceInventories
-        and NMInventoryHelpers.collectVisibleUiSourceInventories(player)
-        or {}
-    for i = 1, #visible do
-        if visible[i] and not seenInventories[visible[i]] then
-            inventories[#inventories + 1] = visible[i]
-            seenInventories[visible[i]] = true
-        end
-    end
-    for i = 1, #inventories do
-        local items = {}
-        if NMInventoryHelpers and NMInventoryHelpers.collectItemsRecursive then
-            NMInventoryHelpers.collectItemsRecursive(inventories[i], items)
-        end
-        for j = 1, #items do
-            if isMyLastTape(items[j]) then
-                MyLastTapeMetadata.ensureVisual(items[j])
-            end
-        end
-    end
-end
-
 local function showMessage(text)
     local core = getCore and getCore() or nil
     local screenWidth = core and core.getScreenWidth and core:getScreenWidth() or 800
@@ -111,7 +79,6 @@ local function recordPlaylist(player, id)
     local state = MyLastTapeMetadata.readState(item)
     state.playlist = MyLastTapeMetadata.clonePlaylist(playlist)
     state.recorded = true
-    state = MyLastTapeMetadata.randomizeVisual(state)
     MyLastTapeMetadata.writeState(item, state)
     print("[MyLastTape] Cassette recorded: id=" .. itemId(item) .. " tracks=" .. tostring(count))
     showMessage("Recorded " .. tostring(count) .. " tracks on My Last Tape.")
@@ -202,7 +169,7 @@ local function addTapeActions(menu, player, mediaItem)
     if not findLivePlayerItem(player, itemId(mediaItem)) then
         return
     end
-    local state = MyLastTapeMetadata.ensureVisual(mediaItem)
+    local state = MyLastTapeMetadata.readState(mediaItem)
     menu:addOption("Rename", player, function(p, id, initialName)
         MyLastTapeRenameWindow.open(p, id, initialName, saveRename)
     end, itemId(mediaItem), state.name or "")
@@ -245,14 +212,4 @@ if not MyLastTapeContextMenu.installTaliLooseMediaHook()
 then
     Events.OnGameStart.Add(MyLastTapeContextMenu.installTaliLooseMediaHook)
     MyLastTapeContextMenu._gameStartRetryRegistered = true
-end
-
-if Events and MyLastTapeContextMenu._visualRefreshRegistered ~= true then
-    if Events.OnGameStart then
-        Events.OnGameStart.Add(refreshTapeVisuals)
-    end
-    if Events.OnRefreshInventoryWindowContainers then
-        Events.OnRefreshInventoryWindowContainers.Add(refreshTapeVisuals)
-    end
-    MyLastTapeContextMenu._visualRefreshRegistered = true
 end
