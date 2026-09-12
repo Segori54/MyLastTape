@@ -68,20 +68,22 @@ MyLastTape/
 
 ### MyLastTape 0.7 Pre-release —  Playlist Editor (single-player)
 
-View Playlist is now a cassette playlist editor. It opens a temporary working copy,
-so reordering, removing tracks and shuffling never modify the physical cassette
-until Save / Re-record is pressed.
-Drag one or several selected tracks to reorder them; selected tracks retain
-their relative order.
-Click selects a track, Ctrl+click adds/removes it, and Shift+click selects a
-range. Hover the x on a selected row to remove the complete selection.
-Shuffle and Undo only affect the temporary editor state; Close discards it
-entirely.
-Saving resolves the cassette again from the player's inventory and persists
-its updated playlist without changing Tali's global track catalog.
-The usual insertion flow registers the saved playlist when that cassette is reinserted.
-The editor remains single-player only. It adds no search, filters, media metadata,
-boombox changes, crafting changes or multiplayer synchronization.
+`View Playlist` is now a cassette playlist editor. It opens a temporary working
+copy, so reordering, removing tracks and shuffling never modify the physical
+cassette until `Save / Re-record` is pressed.
+
+- Drag one or several selected tracks to reorder them; selected tracks retain
+  their relative order.
+- Click selects a track, Ctrl+click adds/removes it, and Shift+click selects a
+  range. Hover the `x` on a selected row to remove the complete selection.
+- `Shuffle` and `Undo` only affect the temporary editor state; `Close` discards
+  it entirely.
+- Saving resolves the cassette again from the player's inventory and persists
+  its updated playlist without changing Tali's global track catalog. The usual
+  insertion flow registers the saved playlist when that cassette is reinserted.
+
+The editor remains single-player only. It adds no search, filters, media
+metadata, boombox changes, crafting changes or multiplayer synchronization.
 
 ### MVP 0.6 — Blank cassettes and acquisition
 
