@@ -4,15 +4,14 @@
 [Tali's New Music](https://steamcommunity.com/workshop/filedetails/?id=3739256725)
 on **Project Zomboid Build 42.20.3**.
 
-It adds one physical cassette type, `MyLastTape.LastTape`. A blank tape can be
-found in the world or received once in single-player, then recorded from
-compatible cassettes available to the player. Each physical tape retains its
-own playlist, name and recording state across ejection, device changes and
-save/load.
+It adds one physical cassette type, `MyLastTape.LastTape`. Each instance starts
+as a `Blank Cassette` with one of 19 random cassette visuals, can be recorded
+from compatible tapes available to the player, and retains its own playlist,
+name and visual across ejection, device changes and save/load.
 
-## Features in MVP 0.7 Pre-Release
+## Features in the current playtest build
 
-- Blank, physical My Last Tape cassettes.
+- Physical `Blank Cassette` items with persistent per-instance visuals.
 - Low-weight loot distribution in plausible residential, desk, shelf and
   garage containers.
 - One blank starter cassette per single-player character.
@@ -21,6 +20,8 @@ save/load.
   containers.
 - Track copying, sound-level deduplication and shuffled recordings.
 - Persistent playlist and custom name per physical cassette instance.
+- Playlist, name and visual preservation in portable players, placed devices
+  and vehicle radios.
 - `Rename`, `Record`, `Re-record`, `View Playlist` and `Erase` in Tali's own
   `Cassette` context submenu.
 - Tali Fancy UI-compatible cassette visual and insertion animation, using
@@ -39,7 +40,6 @@ The Build 42 layout is:
 
 ```text
 MyLastTape/
-├── common/
 └── 42/
     ├── mod.info
     └── media/
@@ -53,7 +53,7 @@ MyLastTape/
 
 ## Known limitations
 
-- MLT 0.7 is single-player/local only. Multiplayer authority and state
+- MLT is currently single-player/local only. Multiplayer authority and state
   synchronization are not part of the released mod.
 - New Music resolves a playlist globally by `MyLastTape.LastTape`. Two My Last
   Tape cassettes inserted simultaneously can temporarily project the same
@@ -66,11 +66,23 @@ MyLastTape/
 
 ## Development history
 
+### Current playtest update — vehicle persistence and cassette identity
+
+- The playlist editor now uses a compact `Save` button that no longer overlaps
+  `Close`.
+- Vehicle radios use the same cassette-state bridge as portable and placed
+  devices, preserving playlist, custom name and visual after ejection.
+- New items spawn as `Blank Cassette` with one of Tali's 19 cassette visuals.
+  The choice is stored per physical cassette, while `Record` and `Re-record`
+  select a different random visual.
+- Cassettes from open loot inventories are resolved before insertion so their
+  physical state is not mistaken for a blank tape.
+
 ### MyLastTape 0.7 Pre-release —  Playlist Editor (single-player)
 
 `View Playlist` is now a cassette playlist editor. It opens a temporary working
 copy, so reordering, removing tracks and shuffling never modify the physical
-cassette until `Save / Re-record` is pressed.
+cassette until `Save` is pressed.
 
 - Drag one or several selected tracks to reorder them; selected tracks retain
   their relative order.
@@ -87,10 +99,12 @@ metadata, boombox changes, crafting changes or multiplayer synchronization.
 
 ### MVP 0.6 — Blank cassettes and acquisition
 
-New cassettes are blank: they contain no playlist, do not scan sources during
-insertion and cannot play until explicitly recorded. `Record` creates the
-playlist and `Re-record` replaces it. The old temporary `NMZomboidTheme2`
-fallback is no longer registered for blank tapes.
+New cassettes spawn as `Blank Cassette`: they contain no playlist, receive a
+random per-instance cassette visual, do not scan sources during insertion and
+cannot play until explicitly recorded. `Record` creates the playlist and
+`Re-record` replaces it; both select a different random cassette visual. The
+old temporary `NMZomboidTheme2` fallback is no longer registered for blank
+tapes.
 
 My Last Tape is injected at low weight into bedroom dressers and side tables,
 living-room shelves and side tables, generic desks and shelves, and garage
@@ -137,8 +151,9 @@ Icon = NM_Cassette_Zomboid
 WorldStaticModel = NewMusic.CassetteZomboid
 ```
 
-This lets Tali's Fancy UI show the cassette and insertion animation without
-copying or modifying Tali assets.
+The current playtest build also reuses Tali's numbered cassette textures and
+models for persistent per-instance visuals without copying or modifying those
+assets.
 
 ### MVP 0.2 — AutoDJ
 

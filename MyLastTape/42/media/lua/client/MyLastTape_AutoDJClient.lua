@@ -40,6 +40,21 @@ local function findItemById(player, id)
     return NMInventoryHelpers.findItemById(inventory, id)
 end
 
+local function findSourceCassette(player, args)
+    local payload = args or {}
+    if NMInventoryHelpers and NMInventoryHelpers.findAccessibleItemByIdOrUuid then
+        local accessible = NMInventoryHelpers.findAccessibleItemByIdOrUuid(
+            player,
+            payload.mediaItemId,
+            payload.mediaItemUuid
+        )
+        if accessible then
+            return accessible
+        end
+    end
+    return findItemById(player, payload.mediaItemId)
+end
+
 local function saveDeviceBridge(device, cassetteState)
     if not (device and device.getModData and MyLastTapeMetadata) then
         return false
@@ -126,7 +141,11 @@ elseif NMClientIntentDispatch and NMClientIntentDispatch._myLastTapeAutoDJWrappe
         local name = tostring(action or "")
 
         if name == "insert_media" and isMyLastTapeInsert(args) then
-            local sourceCassette = findItemById(player, args and args.mediaItemId)
+            local sourceCassette = findSourceCassette(player, args)
+            if not sourceCassette then
+                print("[MyLastTape] Insert blocked: source cassette not found")
+                return false, "cassette_source_not_found"
+            end
             local cassetteState = MyLastTapeMetadata.readState(sourceCassette)
             local playlist = cassetteState.playlist
 
@@ -193,4 +212,93 @@ elseif NMClientIntentDispatch and NMClientIntentDispatch._myLastTapeAutoDJWrappe
 
     NMClientIntentDispatch._myLastTapeAutoDJWrapped = true
     print("[MyLastTape] AutoDJ intent hook installed")
+
+    -- Vehicle radios use a separate dispatch entry point in New Music. Keep
+    -- the same cassette bridge on the radio part so ejecting recreates the
+    -- physical tape with its playlist, name and visual variant intact.
+    if type(NMClientIntentDispatch.performVehicleIntent) == "function"
+        and NMClientIntentDispatch._myLastTapeVehicleAutoDJWrapped ~= true
+    then
+        local originalPerformVehicleIntent = NMClientIntentDispatch.performVehicleIntent
+
+        NMClientIntentDispatch.performVehicleIntent = function(player, vehicle, part, action, args)
+            local name = tostring(action or "")
+
+            if name == "insert_media" and isMyLastTapeInsert(args) then
+                local sourceCassette = findSourceCassette(player, args)
+                if not sourceCassette then
+                    print("[MyLastTape] Vehicle insert blocked: source cassette not found")
+                    return false, "cassette_source_not_found"
+                end
+                local cassetteState = MyLastTapeMetadata.readState(sourceCassette)
+                local playlist = cassetteState.playlist
+
+                if cassetteState.recorded == true and type(playlist) == "table" and #playlist > 0 then
+                    MyLastTapeAutoDJ.registerPlaylist(playlist)
+                else
+                    cassetteState.playlist = nil
+                    cassetteState.recorded = false
+                    if MyLastTapeAutoDJ and MyLastTapeAutoDJ.clearRegisteredPlaylist then
+                        MyLastTapeAutoDJ.clearRegisteredPlaylist()
+                    end
+                end
+
+                local inserted, insertReason = originalPerformVehicleIntent(player, vehicle, part, action, args)
+                if inserted == true then
+                    saveDeviceBridge(part, cassetteState)
+                    if vehicle and vehicle.transmitPartModData then
+                        vehicle:transmitPartModData(part)
+                    end
+                    print("[MyLastTape] mode=vehicle-load-cassette cassetteId=" .. itemId(sourceCassette)
+                        .. " vehicleId=" .. tostring(vehicle and vehicle.getId and vehicle:getId() or "")
+                        .. " partId=" .. tostring(part and part.getId and part:getId() or "")
+                        .. " tracks=" .. tostring(playlist and #playlist or 0)
+                        .. " fingerprint=" .. playlistFingerprint(playlist))
+                end
+                return inserted, insertReason
+            end
+
+            if name == "play" then
+                local cassetteState = readDeviceBridge(part)
+                if cassetteState and cassetteState.recorded ~= true then
+                    print("[MyLastTape] Blank vehicle cassette: playback blocked")
+                    return false, "blank_cassette"
+                end
+            end
+
+            if name == "eject_media" then
+                local cassetteState = readDeviceBridge(part)
+                if not cassetteState then
+                    return originalPerformVehicleIntent(player, vehicle, part, action, args)
+                end
+
+                local beforeIds = snapshotMyLastTapeIds(player)
+                local ejected, ejectReason = originalPerformVehicleIntent(player, vehicle, part, action, args)
+                if ejected ~= true then
+                    return ejected, ejectReason
+                end
+
+                local producedCassette = findProducedCassette(player, beforeIds)
+                if producedCassette and MyLastTapeMetadata.writeState(producedCassette, cassetteState) then
+                    clearDeviceBridge(part)
+                    if vehicle and vehicle.transmitPartModData then
+                        vehicle:transmitPartModData(part)
+                    end
+                    print("[MyLastTape] mode=vehicle-eject-save cassetteId=" .. itemId(producedCassette)
+                        .. " vehicleId=" .. tostring(vehicle and vehicle.getId and vehicle:getId() or "")
+                        .. " partId=" .. tostring(part and part.getId and part:getId() or "")
+                        .. " tracks=" .. tostring(cassetteState.playlist and #cassetteState.playlist or 0)
+                        .. " fingerprint=" .. playlistFingerprint(cassetteState.playlist))
+                else
+                    print("[MyLastTape] vehicle eject-save failed: produced cassette not found; bridge retained")
+                end
+                return ejected, ejectReason
+            end
+
+            return originalPerformVehicleIntent(player, vehicle, part, action, args)
+        end
+
+        NMClientIntentDispatch._myLastTapeVehicleAutoDJWrapped = true
+        print("[MyLastTape] Vehicle AutoDJ intent hook installed")
+    end
 end

@@ -78,7 +78,7 @@ function MyLastTapePlaylistEditorWindow:createChildren()
     self.shuffleButton = ISButton:new(16, self.height - 42, 80, 25, "Shuffle", self, MyLastTapePlaylistEditorWindow.onShuffle)
     self.undoButton = ISButton:new(104, self.height - 42, 70, 25, "Undo", self, MyLastTapePlaylistEditorWindow.onUndo)
     self.closeButton = ISButton:new(self.width - 184, self.height - 42, 80, 25, "Close", self, MyLastTapePlaylistEditorWindow.onClose)
-    self.saveButton = ISButton:new(self.width - 126, self.height - 42, 110, 25, "Save / Re-record", self, MyLastTapePlaylistEditorWindow.onSave)
+    self.saveButton = ISButton:new(self.width - 96, self.height - 42, 80, 25, "Save", self, MyLastTapePlaylistEditorWindow.onSave)
     for _, button in ipairs({ self.shuffleButton, self.undoButton, self.closeButton, self.saveButton }) do
         button:initialise()
         button:instantiate()

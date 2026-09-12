@@ -11,7 +11,7 @@ module MyLastTape
         DisplayCategory = Entertainment,
         Weight = 0.02,
         Icon = NM_Cassette_Zomboid,
-        DisplayName = My Last Tape,
+        DisplayName = Blank Cassette,
         WorldStaticModel = NewMusic.CassetteZomboid,
         CanSpawn = true,
     }

@@ -1,3 +1,5 @@
+require "MyLastTape_Metadata"
+
 local MEDIA_FULL_TYPE = "MyLastTape.LastTape"
 local STARTER_KEY = "MyLastTapeStarter"
 
@@ -24,6 +26,7 @@ local function grantStarterCassette()
 
     local cassette = inventory:AddItem(MEDIA_FULL_TYPE)
     if cassette then
+        MyLastTapeMetadata.ensureVisual(cassette)
         playerModData[STARTER_KEY] = {
             version = 1,
             given = true

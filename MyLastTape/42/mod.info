@@ -2,5 +2,6 @@ name=My Last Tape
 id=MyLastTape
 versionMin=42.20.0
 require=NewMusic
-description=Minimal cassette addon for Tali's New Music
+poster=poster.png
+description=Create persistent custom cassette playlists from the tapes you find. Record, rename, reorder and shuffle each cassette, then play it in portable devices, placed stereos and vehicle radios.
 author=MyLastTape
