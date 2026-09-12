@@ -10,12 +10,7 @@ compatible cassettes available to the player. Each physical tape retains its
 own playlist, name and recording state across ejection, device changes and
 save/load.
 
-## Status
-
-`main` currently contains **MVP 0.6**. The **0.7 pre-release** is being
-developed separately and is not part of the published `main` code yet.
-
-## Features in MVP 0.6
+## Features in MVP 0.7 Pre-Release
 
 - Blank, physical My Last Tape cassettes.
 - Low-weight loot distribution in plausible residential, desk, shelf and
@@ -58,7 +53,7 @@ MyLastTape/
 
 ## Known limitations
 
-- MVP 0.6 is single-player/local only. Multiplayer authority and state
+- MLT 0.7 is single-player/local only. Multiplayer authority and state
   synchronization are not part of the released mod.
 - New Music resolves a playlist globally by `MyLastTape.LastTape`. Two My Last
   Tape cassettes inserted simultaneously can temporarily project the same
@@ -71,13 +66,22 @@ MyLastTape/
 
 ## Development history
 
-### Pre-release 0.7 — in development, not yet published
+### MyLastTape 0.7 Pre-release —  Playlist Editor (single-player)
 
-The next pre-release focuses on editing a recorded playlist before saving it
-back to the physical cassette: a dedicated playlist editor with reordering,
-track removal, shuffle and undo. Its work-in-progress code and the separate MP
-test harness are intentionally excluded from `main` until review and testing
-are complete.
+View Playlist is now a cassette playlist editor. It opens a temporary working copy,
+so reordering, removing tracks and shuffling never modify the physical cassette
+until Save / Re-record is pressed.
+Drag one or several selected tracks to reorder them; selected tracks retain
+their relative order.
+Click selects a track, Ctrl+click adds/removes it, and Shift+click selects a
+range. Hover the x on a selected row to remove the complete selection.
+Shuffle and Undo only affect the temporary editor state; Close discards it
+entirely.
+Saving resolves the cassette again from the player's inventory and persists
+its updated playlist without changing Tali's global track catalog.
+The usual insertion flow registers the saved playlist when that cassette is reinserted.
+The editor remains single-player only. It adds no search, filters, media metadata,
+boombox changes, crafting changes or multiplayer synchronization.
 
 ### MVP 0.6 — Blank cassettes and acquisition
 
