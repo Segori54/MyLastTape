@@ -84,6 +84,27 @@ local function recordPlaylist(player, id)
     showMessage("Recorded " .. tostring(count) .. " tracks on My Last Tape.")
 end
 
+-- The editor supplies a working-copy playlist.  Resolve the item again here:
+-- an inventory action may have moved or destroyed the cassette while its UI
+-- was open.  Do not register NMTrackCatalog here; its entry is global by type
+-- and is refreshed by the existing insert flow for the physical cassette.
+local function saveEditedPlaylist(player, id, playlist)
+    local item = getLiveTape(player, id)
+    if not item then
+        return false, "This My Last Tape is no longer in your inventory."
+    end
+    local savedPlaylist = MyLastTapeMetadata.clonePlaylist(playlist)
+    local state = MyLastTapeMetadata.readState(item)
+    state.playlist = #savedPlaylist > 0 and savedPlaylist or nil
+    state.recorded = #savedPlaylist > 0
+    if MyLastTapeMetadata.writeState(item, state) ~= true then
+        return false, "Could not save this cassette."
+    end
+    print("[MyLastTape] Cassette playlist edited: id=" .. itemId(item)
+        .. " tracks=" .. tostring(#savedPlaylist))
+    return true
+end
+
 local function viewPlaylist(player, id)
     local item = getLiveTape(player, id)
     if not item then
@@ -94,7 +115,14 @@ local function viewPlaylist(player, id)
         showMessage("This cassette has no recorded playlist.")
         return
     end
-    MyLastTapePlaylistWindow.open(MyLastTapeMetadata.getDisplayName(item), state.playlist)
+    MyLastTapePlaylistEditorWindow.open(
+        player,
+        id,
+        MyLastTapeMetadata.getDisplayName(item),
+        state.playlist,
+        state,
+        saveEditedPlaylist
+    )
 end
 
 local function erasePlaylist(player, id)
